@@ -200,13 +200,16 @@
             // extract the first 6 keys (excluding the error and details)
             const allKeys = Object.keys(log.data);
             for (const key of allKeys) {
-                if (key != "error" && key != "details" && keys.length < 6) {
+                if (key != "error" && key != "details" && key != "host" && keys.length < 6) {
                     keys.push({ key });
                 }
             }
         }
 
         // ensure that the error and detail keys are last
+        if (log.data.host) {
+            keys.push({ key: "host", label: "label-info" });
+        }
         if (log.data.error) {
             keys.push({ key: "error", label: "label-danger" });
         }

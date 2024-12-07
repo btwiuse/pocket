@@ -1,6 +1,6 @@
 module github.com/pocketbase/pocketbase
 
-go 1.23.0
+go 1.23.3
 
 require (
 	github.com/disintegration/imaging v1.6.2
