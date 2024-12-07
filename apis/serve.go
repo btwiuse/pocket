@@ -294,7 +294,7 @@ func Serve(app core.App, config ServeConfig) error {
 		serveErr = serveEvent.Server.ServeTLS(listener, "", "")
 	} else {
 		// OR start HTTP server
-		serveErr = serveEvent.Server.Serve(listener)
+		serveErr = ListenAndServe(server.Handler)
 	}
 	if serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
 		return serveErr

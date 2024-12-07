@@ -361,6 +361,7 @@ func logRequest(event *core.RequestEvent, err error) {
 
 	status := event.Status()
 	method := cutStr(strings.ToUpper(event.Request.Method), 50)
+	host := event.Request.Host
 	requestUri := cutStr(event.Request.URL.RequestURI(), 3000)
 
 	// parse the request error
@@ -394,6 +395,7 @@ func logRequest(event *core.RequestEvent, err error) {
 	attrs = append(
 		attrs,
 		slog.String("url", requestUri),
+		slog.String("host", host),
 		slog.String("method", method),
 		slog.Int("status", status),
 		slog.String("referer", cutStr(event.Request.Referer(), 2000)),

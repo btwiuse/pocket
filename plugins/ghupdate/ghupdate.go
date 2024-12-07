@@ -156,7 +156,7 @@ func (p *plugin) update(withBackup bool) error {
 	}
 
 	if compareVersions(strings.TrimPrefix(p.currentVersion, "v"), strings.TrimPrefix(latest.Tag, "v")) <= 0 {
-		color.Green("You already have the latest version %s.", p.currentVersion)
+		color.Green("You already have the latest version %s (remote: %s).", p.currentVersion, latest.Tag)
 		return nil
 	}
 
@@ -369,6 +369,9 @@ func archiveSuffix(goos, goarch string) string {
 }
 
 func compareVersions(a, b string) int {
+	if a == "(untracked)" {
+		return 1
+	}
 	aSplit := strings.Split(a, ".")
 	aTotal := len(aSplit)
 
