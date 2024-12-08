@@ -18,6 +18,8 @@ import (
 	"github.com/pocketbase/pocketbase/tools/list"
 	"github.com/pocketbase/pocketbase/tools/routine"
 	"github.com/pocketbase/pocketbase/ui"
+	"github.com/webteleport/relay"
+	"github.com/webteleport/utils"
 	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
 )
@@ -214,7 +216,7 @@ func Serve(app core.App, config ServeConfig) error {
 			return err
 		}
 
-		e.Server.Handler = handler
+		e.Server.Handler = utils.GinLoggerMiddleware(withProxy(handler))
 
 		if config.HttpsAddr == "" {
 			baseURL = "http://" + serverAddrToHost(serveEvent.Server.Addr)
@@ -294,7 +296,7 @@ func Serve(app core.App, config ServeConfig) error {
 		serveErr = serveEvent.Server.ServeTLS(listener, "", "")
 	} else {
 		// OR start HTTP server
-		serveErr = ListenAndServe(server.Handler)
+		serveErr = server.Serve(listener)
 	}
 	if serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
 		return serveErr
@@ -319,4 +321,15 @@ func (s *serverErrorLogWriter) Write(p []byte) (int, error) {
 	s.app.Logger().Debug(strings.TrimSpace(string(p)))
 
 	return len(p), nil
+}
+
+func withProxy(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case relay.IsProxy(r):
+			relay.AuthenticatedProxyHandler.ServeHTTP(w, r)
+		default:
+			next.ServeHTTP(w, r)
+		}
+	})
 }

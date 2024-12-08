@@ -6,11 +6,11 @@ import (
 	"strings"
 
 	"github.com/pocketbase/pocketbase"
-	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/plugins/ghupdate"
 	"github.com/pocketbase/pocketbase/tools/hook"
 	"github.com/webteleport/relay"
+	"github.com/webteleport/utils"
 )
 
 func main() {
@@ -18,6 +18,10 @@ func main() {
 		log.Fatal(err)
 	}
 }
+
+var (
+	HOST = utils.EnvHost("^localhost$")
+)
 
 func Run(args []string) error {
 	app := pocketbase.New()
@@ -34,10 +38,10 @@ func Run(args []string) error {
 	// registers the relay middleware
 	app.OnServe().Bind(&hook.Handler[*core.ServeEvent]{
 		Func: func(se *core.ServeEvent) error {
-			log.Println("starting the relay server", "HOST", apis.HOST)
+			log.Println("starting the relay server", "HOST", HOST)
 
 			store := relay.NewSessionStore()
-			mini := relay.NewWSServer(apis.HOST, store)
+			mini := relay.NewWSServer(HOST, store)
 
 			se.Router.BindFunc(func(re *core.RequestEvent) error {
 				isPocketbaseHost := mini.IsRootExternal(re.Event.Request)
