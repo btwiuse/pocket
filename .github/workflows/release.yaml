@@ -51,6 +51,6 @@ jobs:
         with:
           distribution: goreleaser
           version: '~> v2'
-          args: release --clean ${{ env.flags }}
+          args: release --clean ${{ env.flags }} --skip=validate
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
