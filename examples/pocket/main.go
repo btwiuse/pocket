@@ -8,6 +8,7 @@ import (
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/plugins/ghupdate"
+	"github.com/pocketbase/pocketbase/plugins/jsvm"
 	"github.com/pocketbase/pocketbase/tools/hook"
 	"github.com/webteleport/relay"
 	"github.com/webteleport/utils"
@@ -26,7 +27,20 @@ var (
 func Run(args []string) error {
 	app := pocketbase.New()
 
+	var hooksDir string
+	app.RootCmd.PersistentFlags().StringVar(
+		&hooksDir,
+		"hooksDir",
+		"",
+		"the directory with the JS app hooks",
+	)
+
 	app.RootCmd.ParseFlags(args)
+
+	// load jsvm (pb_hooks and pb_migrations)
+	jsvm.MustRegister(app, jsvm.Config{
+		HooksDir: hooksDir,
+	})
 
 	// GitHub selfupdate
 	ghupdate.MustRegister(app, app.RootCmd, ghupdate.Config{
