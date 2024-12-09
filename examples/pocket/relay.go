@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/pocketbase/pocketbase/core"
@@ -12,7 +13,11 @@ import (
 	"github.com/webteleport/utils"
 )
 
+// disable the relay server by setting HOST to an empty string
 var HOST = utils.EnvHost("")
+
+// execute as late as possible to make user provided hooks run early
+var PRIORITY = StringToInt(os.Getenv("PRIORITY"), 99998)
 
 var RelayHook = &hook.Handler[*core.ServeEvent]{
 	Func: func(se *core.ServeEvent) error {
@@ -28,6 +33,8 @@ var RelayHook = &hook.Handler[*core.ServeEvent]{
 			store.Use(utils.GinLoggerMiddleware)
 		}
 
+		// mini.RootHandler doesn't work with the gin logger middleware
+		// it's recommended to use pb_hooks to log requests
 		mini := relay.NewWSServer(HOST, store)
 
 		se.Router.BindFunc(func(re *core.RequestEvent) error {
@@ -38,7 +45,7 @@ var RelayHook = &hook.Handler[*core.ServeEvent]{
 			isPocketbase := isPocketbaseHost && (isAPI || isUI)
 
 			if os.Getenv("DEBUG") != "" {
-				log.Println(fmt.Sprintf("isPocketbase (%v) := isPocketbaseHost (%v) && (isAPI (%v) || isUI (%v))\n", isPocketbase, isPocketbaseHost, isAPI, isUI))
+				log.Println(fmt.Sprintf("isPocketbase (%v) := isPocketbaseHost (%v) && (isAPI (%v) || isUI (%v))", isPocketbase, isPocketbaseHost, isAPI, isUI))
 			}
 
 			// route non pocketbase requests to relay
@@ -52,5 +59,13 @@ var RelayHook = &hook.Handler[*core.ServeEvent]{
 
 		return se.Next()
 	},
-	Priority: -99999, // execute as early as possible
+	Priority: PRIORITY,
+}
+
+func StringToInt(str string, fallback int) int {
+	num, err := strconv.Atoi(str)
+	if err != nil {
+		return fallback
+	}
+	return num
 }
