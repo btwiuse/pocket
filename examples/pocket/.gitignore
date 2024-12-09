@@ -4,3 +4,4 @@
 # exclude from the ignore filter
 !.gitignore
 !main.go
+!relay.go
