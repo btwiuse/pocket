@@ -1,8 +1,16 @@
 FROM btwiuse/ufo AS builder-ufo
 
-FROM btwiuse/arch:golang AS builder-golang
+FROM btwiuse/arch:node AS builder-node
 
 COPY . /pocket
+
+WORKDIR /pocket
+
+RUN make frontend
+
+FROM btwiuse/arch:golang AS builder-golang
+
+COPY --from=builder-node /pocket /pocket
 
 WORKDIR /pocket
 

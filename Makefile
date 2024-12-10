@@ -2,6 +2,9 @@ all:
 	go mod tidy
 	CGO_ENABLED=0 go build -v ./examples/pocket
 
+frontend:
+	npm --prefix=./ui ci && npm --prefix=./ui run build
+
 lint:
 	golangci-lint run -c ./golangci.yml ./...
 
