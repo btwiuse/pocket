@@ -1,3 +1,7 @@
+all:
+	go mod tidy
+	CGO_ENABLED=0 go build -v ./examples/pocket
+
 lint:
 	golangci-lint run -c ./golangci.yml ./...
 
