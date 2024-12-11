@@ -27,19 +27,17 @@ var RelayHook = &hook.Handler[*core.ServeEvent]{
 
 		log.Println("starting the relay server", "HOST", HOST)
 
-		store := relay.NewSessionStore()
+		s := relay.DefaultWSServer(HOST)
 
-		if os.Getenv("LOGGIN") != "" {
-			store.Use(utils.GinLoggerMiddleware)
-		}
-
-		// mini.RootHandler doesn't work with the gin logger middleware
+		// s.RootHandler doesn't work with the gin logger middleware
 		// it's recommended to use pb_hooks to log requests
-		mini := relay.NewWSServer(HOST, store)
+		if os.Getenv("LOGGIN") != "" {
+			s.Use(utils.GinLoggerMiddleware)
+		}
 
 		se.Router.BindFunc(func(re *core.RequestEvent) error {
 			r := re.Event.Request
-			isPocketbaseHost := mini.IsRootExternal(r)
+			isPocketbaseHost := s.IsRootExternal(r)
 			isAPI := strings.HasPrefix(r.URL.Path, "/api/")
 			isUI := strings.HasPrefix(r.URL.Path, "/_/")
 			isPocketbase := isPocketbaseHost && (isAPI || isUI)
@@ -50,7 +48,7 @@ var RelayHook = &hook.Handler[*core.ServeEvent]{
 
 			// route non pocketbase requests to relay
 			if !isPocketbase {
-				mini.ServeHTTP(re.Event.Response, re.Event.Request)
+				s.ServeHTTP(re.Event.Response, re.Event.Request)
 				return nil
 			}
 
