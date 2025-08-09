@@ -36,7 +36,7 @@ var RelayHook = &hook.Handler[*core.ServeEvent]{
 		}
 
 		se.Router.BindFunc(func(re *core.RequestEvent) error {
-			r := re.Event.Request
+			w, r := re.Event.Response, re.Event.Request
 			isPocketbaseHost := s.IsRootExternal(r)
 			isAPI := strings.HasPrefix(r.URL.Path, "/api/")
 			isUI := strings.HasPrefix(r.URL.Path, "/_/")
@@ -48,7 +48,7 @@ var RelayHook = &hook.Handler[*core.ServeEvent]{
 
 			// route non pocketbase requests to relay
 			if !isPocketbase {
-				s.ServeHTTP(re.Event.Response, re.Event.Request)
+				s.ServeHTTP(w, r)
 				return nil
 			}
 

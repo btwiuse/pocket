@@ -1,6 +1,8 @@
 module github.com/pocketbase/pocketbase
 
-go 1.23.4
+go 1.24
+
+toolchain go1.24.5
 
 require (
 	github.com/disintegration/imaging v1.6.2
@@ -17,8 +19,8 @@ require (
 	github.com/pocketbase/tygoja v0.0.0-20250103200817-ca580d8c5119
 	github.com/spf13/cast v1.9.2
 	github.com/spf13/cobra v1.9.1
-	github.com/webteleport/relay v0.4.50
-	github.com/webteleport/utils v0.2.17
+	github.com/webteleport/relay v0.4.52-alpha.6
+	github.com/webteleport/utils v0.2.19-alpha.6
 	golang.org/x/crypto v0.40.0
 	golang.org/x/image v0.29.0
 	golang.org/x/net v0.42.0
