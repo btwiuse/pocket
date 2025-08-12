@@ -39,6 +39,12 @@ func RelayHookFunc(se *core.ServeEvent) error {
 
 	log.Println("starting the relay server", "HOST", HOST)
 
+	relay.DefaultStorage.OnUpdateFunc = func(t *relay.Store) {
+		store := se.App.Store()
+		store.Set("relayRecordMap", t.RecordMap)
+		store.Set("relayAliasMap", t.AliasMap)
+	}
+
 	s := relay.DefaultWSServer(HOST)
 
 	proxyMiddleware := &hook.Handler[*core.RequestEvent]{
