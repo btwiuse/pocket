@@ -59,6 +59,12 @@ func NewRouter[T hook.Resolver](eventFactory EventFactoryFunc[T]) *Router[T] {
 
 // BuildMux constructs a new mux [http.Handler] instance from the current router configurations.
 func (r *Router[T]) BuildMux() (http.Handler, error) {
+	r.PreBuildMux()
+	return r.JustBuildMux()
+}
+
+// PreBuildMux registers catch-all routes
+func (r *Router[T]) PreBuildMux() {
 	// Note that some of the default std Go handlers like the [http.NotFoundHandler]
 	// cannot be currently extended and requires defining a custom "catch-all" route
 	// so that the group middlewares could be executed.
@@ -68,9 +74,15 @@ func (r *Router[T]) BuildMux() (http.Handler, error) {
 		r.Route("", "/", func(e T) error {
 			return NewNotFoundError("", nil)
 		})
+		r.CONNECT("", func(e T) error {
+			return NewNotFoundError("", nil)
+		})
 	}
+}
 
-	mux := http.NewServeMux()
+// JustBuildMux skips PreBuildMux
+func (r *Router[T]) JustBuildMux() (http.Handler, error) {
+	mux := NewServeMux()
 
 	if err := r.loadMux(mux, r.RouterGroup, nil); err != nil {
 		return nil, err
@@ -79,7 +91,7 @@ func (r *Router[T]) BuildMux() (http.Handler, error) {
 	return mux, nil
 }
 
-func (r *Router[T]) loadMux(mux *http.ServeMux, group *RouterGroup[T], parents []*RouterGroup[T]) error {
+func (r *Router[T]) loadMux(mux *ServeMux, group *RouterGroup[T], parents []*RouterGroup[T]) error {
 	for _, child := range group.children {
 		switch v := child.(type) {
 		case *RouterGroup[T]:
