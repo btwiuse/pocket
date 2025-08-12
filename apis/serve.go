@@ -2,9 +2,10 @@ package apis
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
+	"fmt"
 	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"path/filepath"
@@ -12,13 +13,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/btwiuse/dispatcher"
+	"github.com/btwiuse/proxy"
 	"github.com/fatih/color"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/hook"
 	"github.com/pocketbase/pocketbase/tools/list"
 	"github.com/pocketbase/pocketbase/tools/routine"
 	"github.com/pocketbase/pocketbase/ui"
-	"golang.org/x/crypto/acme"
+	"github.com/webteleport/relay"
 	"golang.org/x/crypto/acme/autocert"
 )
 
@@ -137,11 +140,7 @@ func Serve(app core.App, config ServeConfig) error {
 	defer cancelBaseCtx()
 
 	server := &http.Server{
-		TLSConfig: &tls.Config{
-			MinVersion:     tls.VersionTLS12,
-			GetCertificate: certManager.GetCertificate,
-			NextProtos:     []string{acme.ALPNProto},
-		},
+		TLSConfig: LocalTLSConfig(CERT, KEY),
 		// higher defaults to accommodate large file uploads/downloads
 		WriteTimeout:      5 * time.Minute,
 		ReadTimeout:       5 * time.Minute,
@@ -207,14 +206,53 @@ func Serve(app core.App, config ServeConfig) error {
 	serveEvent.CertManager = certManager
 	serveEvent.InstallerFunc = DefaultInstallerFunc
 
-	// trigger the OnServe hook and start the tcp listener
-	serveHookErr := app.OnServe().Trigger(serveEvent, func(e *core.ServeEvent) error {
+	lastHook := func(e *core.ServeEvent) error {
+		logger := e.App.Logger().
+			With("app", "pocket").
+			With("type", "slog").
+			With("hook", "SlogHook")
+
+		log.Println("starting the relay server", "HOST", HOST)
+
+		s := relay.DefaultWSServer(HOST)
+
 		handler, err := e.Router.BuildMux()
 		if err != nil {
 			return err
 		}
 
-		e.Server.Handler = handler
+		dispatch := func(r *http.Request) (h http.Handler) {
+			isPocketbaseHost := s.IsRootExternal(r)
+			isAPI := strings.HasPrefix(r.URL.Path, "/api/")
+			isUI := strings.HasPrefix(r.URL.Path, "/_/")
+			isPocketbase := isPocketbaseHost && (isAPI || isUI)
+
+			switch {
+			case isPocketbase:
+				h = handler
+				log.Println("dispatching pocketbase", r.Method, r.RequestURI)
+			case proxy.IsProxy(r):
+				h = s
+				log.Println("dispatching proxy", r.Method, r.RequestURI)
+				msg := fmt.Sprintf("SLOG %s", r.URL.RequestURI())
+				attrs := make([]any, 0, 15)
+				attrs = append(attrs,
+					slog.String("path", r.URL.Path),
+					slog.String("url", r.URL.RequestURI()),
+					slog.String("host", r.Host),
+					slog.String("method", r.Method),
+					slog.String("referer", r.Referer()),
+					slog.String("userAgent", r.UserAgent()),
+				)
+				logger.Info(msg, attrs...)
+			default:
+				h = s
+				log.Println("dispatching relay", r.Method, r.RequestURI)
+			}
+			return
+		}
+
+		e.Server.Handler = dispatcher.DispatcherFunc(dispatch)
 
 		if config.HttpsAddr == "" {
 			baseURL = "http://" + serverAddrToHost(serveEvent.Server.Addr)
@@ -257,7 +295,10 @@ func Serve(app core.App, config ServeConfig) error {
 		}
 
 		return nil
-	})
+	}
+
+	// trigger the OnServe hook and start the tcp listener
+	serveHookErr := app.OnServe().Trigger(serveEvent, lastHook)
 	if serveHookErr != nil {
 		return serveHookErr
 	}
@@ -285,16 +326,16 @@ func Serve(app core.App, config ServeConfig) error {
 
 	var serveErr error
 	if config.HttpsAddr != "" {
+		slog.Info("Starting HTTPS server", "on", config.HttpsAddr, "CERT", CERT, "KEY", KEY)
 		if config.HttpAddr != "" {
-			// start an additional HTTP server for redirecting the traffic to the HTTPS version
-			go http.ListenAndServe(config.HttpAddr, certManager.HTTPHandler(nil))
+			go http.ListenAndServe(config.HttpAddr, serveEvent.Server.Handler)
 		}
 
 		// start HTTPS server
 		serveErr = serveEvent.Server.ServeTLS(listener, "", "")
 	} else {
 		// OR start HTTP server
-		serveErr = server.Serve(listener)
+		serveErr = serveEvent.Server.Serve(listener)
 	}
 	if serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
 		return serveErr
