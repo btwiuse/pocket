@@ -5,6 +5,9 @@ go 1.24
 toolchain go1.24.5
 
 require (
+	github.com/btwiuse/better v0.0.0
+	github.com/btwiuse/dispatcher v0.0.0
+	github.com/btwiuse/proxy v0.0.2
 	github.com/disintegration/imaging v1.6.2
 	github.com/domodwyer/mailyak/v3 v3.6.2
 	github.com/dop251/goja v0.0.0-20250309171923-bcd7cc6bf64c
