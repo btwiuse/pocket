@@ -3,7 +3,6 @@ package apis
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"log/slog"
 	"net"
@@ -13,15 +12,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/btwiuse/dispatcher"
-	"github.com/btwiuse/proxy"
 	"github.com/fatih/color"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/hook"
 	"github.com/pocketbase/pocketbase/tools/list"
 	"github.com/pocketbase/pocketbase/tools/routine"
 	"github.com/pocketbase/pocketbase/ui"
-	"github.com/webteleport/relay"
 	"golang.org/x/crypto/acme/autocert"
 )
 
@@ -207,52 +203,12 @@ func Serve(app core.App, config ServeConfig) error {
 	serveEvent.InstallerFunc = DefaultInstallerFunc
 
 	lastHook := func(e *core.ServeEvent) error {
-		logger := e.App.Logger().
-			With("app", "pocket").
-			With("type", "slog").
-			With("hook", "SlogHook")
-
-		log.Println("starting the relay server", "HOST", HOST)
-
-		s := relay.DefaultWSServer(HOST)
-
 		handler, err := e.Router.BuildMux()
 		if err != nil {
 			return err
 		}
 
-		dispatch := func(r *http.Request) (h http.Handler) {
-			isPocketbaseHost := s.IsRootExternal(r)
-			isAPI := strings.HasPrefix(r.URL.Path, "/api/")
-			isUI := strings.HasPrefix(r.URL.Path, "/_/")
-			isPocketbase := isPocketbaseHost && (isAPI || isUI)
-
-			switch {
-			case isPocketbase:
-				h = handler
-				log.Println("dispatching pocketbase", r.Method, r.RequestURI)
-			case proxy.IsProxy(r):
-				h = s
-				log.Println("dispatching proxy", r.Method, r.RequestURI)
-				msg := fmt.Sprintf("SLOG %s", r.URL.RequestURI())
-				attrs := make([]any, 0, 15)
-				attrs = append(attrs,
-					slog.String("path", r.URL.Path),
-					slog.String("url", r.URL.RequestURI()),
-					slog.String("host", r.Host),
-					slog.String("method", r.Method),
-					slog.String("referer", r.Referer()),
-					slog.String("userAgent", r.UserAgent()),
-				)
-				logger.Info(msg, attrs...)
-			default:
-				h = s
-				log.Println("dispatching relay", r.Method, r.RequestURI)
-			}
-			return
-		}
-
-		e.Server.Handler = dispatcher.DispatcherFunc(dispatch)
+		e.Server.Handler = handler
 
 		if config.HttpsAddr == "" {
 			baseURL = "http://" + serverAddrToHost(serveEvent.Server.Addr)
