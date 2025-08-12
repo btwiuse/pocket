@@ -132,6 +132,11 @@ func (group *RouterGroup[T]) Any(path string, action func(e T) error) *Route[T] 
 	return group.Route("", path, action)
 }
 
+// CONNECT is a shorthand for [RouterGroup.AddRoute] with CONNECT as route method.
+func (group *RouterGroup[T]) CONNECT(path string, action func(e T) error) *Route[T] {
+	return group.Route(http.MethodConnect, path, action)
+}
+
 // GET is a shorthand for [RouterGroup.AddRoute] with GET as route method.
 func (group *RouterGroup[T]) GET(path string, action func(e T) error) *Route[T] {
 	return group.Route(http.MethodGet, path, action)
