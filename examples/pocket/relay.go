@@ -1,12 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"strconv"
-	"strings"
 
+	"github.com/btwiuse/proxy"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/hook"
 	"github.com/webteleport/relay"
@@ -42,31 +41,56 @@ func RelayHookFunc(se *core.ServeEvent) error {
 
 	s := relay.DefaultWSServer(HOST)
 
-	// s.RootHandler doesn't work with the gin logger middleware
-	// it's recommended to use pb_hooks to log requests
-	if os.Getenv("LOGGIN") != "" {
-		s.Use(utils.GinLoggerMiddleware)
+	proxyMiddleware := &hook.Handler[*core.RequestEvent]{
+		Id: "proxyMiddlewareId",
+		Func: func(re *core.RequestEvent) error {
+			w, r := re.Event.Response, re.Event.Request
+
+			if proxy.IsProxy(r) {
+				proxy.AuthenticatedProxyHandler.ServeHTTP(w, r)
+				return nil
+			}
+
+			return re.Next()
+		},
+		Priority: 1,
 	}
 
-	se.Router.BindFunc(func(re *core.RequestEvent) error {
-		w, r := re.Event.Response, re.Event.Request
-		isPocketbaseHost := s.IsRootExternal(r)
-		isAPI := strings.HasPrefix(r.URL.Path, "/api/")
-		isUI := strings.HasPrefix(r.URL.Path, "/_/")
-		isPocketbase := isPocketbaseHost && (isAPI || isUI)
+	upgradeMiddleware := &hook.Handler[*core.RequestEvent]{
+		Id: "upgradeMiddlewareId",
+		Func: func(re *core.RequestEvent) error {
+			w, r := re.Event.Response, re.Event.Request
 
-		if os.Getenv("DEBUG") != "" {
-			log.Println(fmt.Sprintf("isPocketbase (%v) := isPocketbaseHost (%v) && (isAPI (%v) || isUI (%v))", isPocketbase, isPocketbaseHost, isAPI, isUI))
-		}
+			if s.IsUpgrade(r) {
+				s.HTTPUpgrader.ServeHTTP(w, r)
+				return nil
+			}
 
-		// route non pocketbase requests to relay
-		if !isPocketbase {
-			s.ServeHTTP(w, r)
-			return nil
-		}
+			return re.Next()
+		},
+		Priority: 2,
+	}
 
-		return re.Next()
-	})
+	ingressMiddleware := &hook.Handler[*core.RequestEvent]{
+		Id: "ingressMiddlewareId",
+		Func: func(re *core.RequestEvent) error {
+			w, r := re.Event.Response, re.Event.Request
+
+			if !s.IsRootExternal(r) {
+				s.Ingress.ServeHTTP(w, r)
+				return nil
+			}
+
+			return re.Next()
+		},
+		Priority: 3,
+	}
+
+	se.Router.Bind(proxyMiddleware)
+
+	se.Router.Bind(upgradeMiddleware)
+
+	se.Router.Bind(ingressMiddleware)
 
 	return se.Next()
 }

@@ -108,7 +108,7 @@ func main() {
 	})
 
 	// registers the relay middleware
-	// app.OnServe().Bind(RelayHook)
+	app.OnServe().Bind(RelayHook)
 
 	// registers the slog middleware
 	// app.OnServe().Bind(SlogHook)
