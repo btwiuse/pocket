@@ -16,6 +16,9 @@ builds:
       - -s -w -X github.com/pocketbase/pocketbase.Version={{ .Version }}
     env:
       - CGO_ENABLED=0
+      - GONOSUMDB=*
+      - GOTOOLCHAIN=go1.25.0
+      - GOPROXY=https://proxy.golang.org,https://goproxy.cn,https://goproxy.io,direct
     goos:
       - linux
       - windows
