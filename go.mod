@@ -1,8 +1,8 @@
 module github.com/pocketbase/pocketbase
 
-go 1.24
+go 1.25
 
-toolchain go1.24.5
+toolchain go1.25.0
 
 require (
 	github.com/btwiuse/better v0.0.0
