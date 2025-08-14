@@ -271,7 +271,13 @@ func (rw *ResponseWriter) FlushError() error {
 
 // Hijack implements [http.Hijacker] and allows an HTTP handler to take over the current connection.
 func (rw *ResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return http.NewResponseController(rw.ResponseWriter).Hijack()
+	conn, b, err := http.NewResponseController(rw.ResponseWriter).Hijack()
+	if err == nil && rw.status == 0 {
+		// The status will be StatusSwitchingProtocols if there was no error and
+		// WriteHeader has not been called yet
+		rw.status = http.StatusSwitchingProtocols
+	}
+	return conn, b, err
 }
 
 // Pusher implements [http.Pusher] to indicate HTTP/2 server push support.
