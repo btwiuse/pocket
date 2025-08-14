@@ -40,6 +40,29 @@ func leadingComponent(s string) string {
 	return strings.Split(strings.TrimPrefix(s, "/"), "/")[0]
 }
 
+func unsetCookie(w http.ResponseWriter, name string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     name,
+		Value:    "",
+		MaxAge:   -1,
+		Path:     "/",
+		Expires:  time.Unix(0, 0),
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+func setCookie(w http.ResponseWriter, name string, value string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     name,
+		Value:    value,
+		MaxAge:   2592000, // 30 days in seconds
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
 func RelayHookFunc(se *core.ServeEvent) error {
 	if HOST == "" {
 		return se.Next()
@@ -102,17 +125,7 @@ func RelayHookFunc(se *core.ServeEvent) error {
 	// - browser reauthenticate needed when agent reconnects
 
 	indexSessionKey := "_indexSessionKey"
-	unsetCookie := func(w http.ResponseWriter) {
-		http.SetCookie(w, &http.Cookie{
-			Name:     indexSessionKey,
-			Value:    "",
-			MaxAge:   -1,
-			Path:     "/",
-			Expires:  time.Unix(0, 0),
-			HttpOnly: true,
-			SameSite: http.SameSiteLaxMode,
-		})
-	}
+	indexUseApi := "_indexUseApi"
 	indexMiddleware := &hook.Handler[*core.RequestEvent]{
 		Id: "indexMiddlewareId",
 		Func: func(re *core.RequestEvent) error {
@@ -120,22 +133,30 @@ func RelayHookFunc(se *core.ServeEvent) error {
 
 			isUI := strings.HasPrefix(r.URL.Path, "/_/")
 			isAPI := strings.HasPrefix(r.URL.Path, "/api/")
-			isUIReferer := strings.HasSuffix(r.Referer(), "/_/")
+			allowAPI := strings.HasSuffix(r.Referer(), "/_/")
 
-			if s.IsRootExternal(r) && isAPI && isUIReferer {
-				// passthrough requests to /api/... from /_/
+			if c, err := r.Cookie(indexUseApi); err == nil && c.Value != "" {
+				allowAPI = true
+			}
+
+			if s.IsRootExternal(r) && isAPI && allowAPI {
+				// passthrough requests to /api/... from /_/ or sessions of /<id>?api=1
 				goto NEXT
 			}
 
 			if s.IsRootExternal(r) && isUI {
 				// reset session cookie on visiting /_/
-				unsetCookie(w)
+				unsetCookie(w, indexSessionKey)
+				unsetCookie(w, indexUseApi)
 				goto NEXT
 			}
 
 			if s.IsRootExternal(r) && !isUI {
 				// get path => id
 				rpath := leadingComponent(r.URL.Path)
+
+				// allow /<id>?api=1 to access pb api
+				useApi := r.URL.Query().Get("api") != ""
 
 				// set session cookie
 				if rt, ok := s.GetRoundTripper(rpath); ok {
@@ -148,14 +169,10 @@ func RelayHookFunc(se *core.ServeEvent) error {
 					}
 					re.App.Store().Set(rpath, rp)
 					// set cookies and redirect to /
-					http.SetCookie(w, &http.Cookie{
-						Name:     indexSessionKey,
-						Value:    rpath,
-						MaxAge:   2592000, // 30 days in seconds
-						Path:     "/",
-						HttpOnly: true,
-						SameSite: http.SameSiteLaxMode,
-					})
+					setCookie(w, indexSessionKey, rpath)
+					if useApi {
+						setCookie(w, indexUseApi, "true")
+					}
 					http.Redirect(w, r, "/", http.StatusFound)
 					return nil
 				} else {
@@ -173,7 +190,8 @@ func RelayHookFunc(se *core.ServeEvent) error {
 						}
 					} else {
 						// invalidate cookie
-						unsetCookie(w)
+						unsetCookie(w, indexSessionKey)
+						unsetCookie(w, indexUseApi)
 					}
 				}
 			}
