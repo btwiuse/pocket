@@ -125,7 +125,7 @@ func RelayHookFunc(se *core.ServeEvent) error {
 	// - browser reauthenticate needed when agent reconnects
 
 	indexSessionKey := "_indexSessionKey"
-	indexUseApi := "_indexUseApi"
+	indexNoApi := "_indexNoApi"
 	indexMiddleware := &hook.Handler[*core.RequestEvent]{
 		Id: "indexMiddlewareId",
 		Func: func(re *core.RequestEvent) error {
@@ -133,21 +133,21 @@ func RelayHookFunc(se *core.ServeEvent) error {
 
 			isUI := strings.HasPrefix(r.URL.Path, "/_/")
 			isAPI := strings.HasPrefix(r.URL.Path, "/api/")
-			allowAPI := strings.HasSuffix(r.Referer(), "/_/")
+			allowAPI := true
 
-			if c, err := r.Cookie(indexUseApi); err == nil && c.Value != "" {
-				allowAPI = true
+			if c, err := r.Cookie(indexNoApi); err == nil && c.Value != "" {
+				allowAPI = false
 			}
 
 			if s.IsRootExternal(r) && isAPI && allowAPI {
-				// passthrough requests to /api/... from /_/ or sessions of /<id>?api=1
+				// passthrough requests to /api/... from /_/ or sessions without /<id>?noapi=1
 				goto NEXT
 			}
 
 			if s.IsRootExternal(r) && isUI {
 				// reset session cookie on visiting /_/
 				unsetCookie(w, indexSessionKey)
-				unsetCookie(w, indexUseApi)
+				unsetCookie(w, indexNoApi)
 				goto NEXT
 			}
 
@@ -155,8 +155,8 @@ func RelayHookFunc(se *core.ServeEvent) error {
 				// get path => id
 				rpath := leadingComponent(r.URL.Path)
 
-				// allow /<id>?api=1 to access pb api
-				useApi := r.URL.Query().Get("api") != ""
+				// /<id>?noapi=1 to override pb api
+				noApi := r.URL.Query().Get("noapi") != ""
 
 				// set session cookie
 				if rt, ok := s.GetRoundTripper(rpath); ok {
@@ -170,8 +170,8 @@ func RelayHookFunc(se *core.ServeEvent) error {
 					re.App.Store().Set(rpath, rp)
 					// set cookies and redirect to /
 					setCookie(w, indexSessionKey, rpath)
-					if useApi {
-						setCookie(w, indexUseApi, "true")
+					if noApi {
+						setCookie(w, indexNoApi, "true")
 					}
 					http.Redirect(w, r, "/", http.StatusFound)
 					return nil
@@ -191,7 +191,7 @@ func RelayHookFunc(se *core.ServeEvent) error {
 					} else {
 						// invalidate cookie
 						unsetCookie(w, indexSessionKey)
-						unsetCookie(w, indexUseApi)
+						unsetCookie(w, indexNoApi)
 					}
 				}
 			}
