@@ -2,6 +2,7 @@ package apis
 
 import (
 	"crypto/tls"
+	"os"
 
 	"github.com/webteleport/utils"
 )
@@ -24,6 +25,9 @@ func LocalTLSConfig(certFile, keyFile string) *tls.Config {
 			return nil, err
 		}
 		return &cert, nil
+	}
+	if os.Getenv("HTTP2") != "" {
+		NextProtos = []string{"h2", "http/1.1"}
 	}
 	return &tls.Config{
 		GetCertificate: GetCertificate,

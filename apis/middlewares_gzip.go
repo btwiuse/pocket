@@ -89,7 +89,7 @@ func GzipWithConfig(config GzipConfig) *hook.Handler[*core.RequestEvent] {
 		Func: func(e *core.RequestEvent) error {
 			// skip websocket requests
 			if strings.Contains(e.Request.Header.Get("Connection"), "Upgrade") {
-			    goto NEXT
+				goto NEXT
 			}
 			e.Response.Header().Add("Vary", "Accept-Encoding")
 			if strings.Contains(e.Request.Header.Get("Accept-Encoding"), gzipScheme) {
@@ -137,7 +137,7 @@ func GzipWithConfig(config GzipConfig) *hook.Handler[*core.RequestEvent] {
 				e.Response = grw
 			}
 
-			NEXT:
+		NEXT:
 			return e.Next()
 		},
 	}

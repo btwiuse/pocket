@@ -22,8 +22,10 @@ var HOST = utils.EnvHost("")
 // execute as late as possible to make user provided hooks run early
 var PRIORITY = StringToInt(os.Getenv("PRIORITY"), 99998)
 
+var RelayHookId = "RelayHookId"
+
 var RelayHook = &hook.Handler[*core.ServeEvent]{
-	Id:       "RelayHookId",
+	Id:       RelayHookId,
 	Func:     RelayHookFunc,
 	Priority: PRIORITY,
 }
@@ -83,6 +85,7 @@ func RelayHookFunc(se *core.ServeEvent) error {
 	proxyMiddleware := &hook.Handler[*core.RequestEvent]{
 		Id: "proxyMiddlewareId",
 		Func: func(re *core.RequestEvent) error {
+			re.TraceMiddleware("proxyMiddlewareId", -2000 + 1)
 			w, r := re.Event.Response, re.Event.Request
 
 			if proxy.IsProxy(r) {
@@ -92,12 +95,13 @@ func RelayHookFunc(se *core.ServeEvent) error {
 
 			return re.Next()
 		},
-		Priority: 1,
+		Priority: -2000 + 1,
 	}
 
 	upgradeMiddleware := &hook.Handler[*core.RequestEvent]{
 		Id: "upgradeMiddlewareId",
 		Func: func(re *core.RequestEvent) error {
+			re.TraceMiddleware("upgradeMiddlewareId", -2000 + 2)
 			w, r := re.Event.Response, re.Event.Request
 
 			if s.IsUpgrade(r) {
@@ -107,7 +111,7 @@ func RelayHookFunc(se *core.ServeEvent) error {
 
 			return re.Next()
 		},
-		Priority: 2,
+		Priority: -2000 + 2,
 	}
 
 	// request flow:
@@ -131,6 +135,7 @@ func RelayHookFunc(se *core.ServeEvent) error {
 	indexMiddleware := &hook.Handler[*core.RequestEvent]{
 		Id: "indexMiddlewareId",
 		Func: func(re *core.RequestEvent) error {
+			re.TraceMiddleware("indexMiddlewareId", -2000 + 3)
 			w, r := re.Event.Response, re.Event.Request
 
 			isUI := strings.HasPrefix(r.URL.Path, "/_/")
@@ -201,12 +206,13 @@ func RelayHookFunc(se *core.ServeEvent) error {
 		NEXT:
 			return re.Next()
 		},
-		Priority: 3,
+		Priority: -2000 + 3,
 	}
 
 	ingressMiddleware := &hook.Handler[*core.RequestEvent]{
 		Id: "ingressMiddlewareId",
 		Func: func(re *core.RequestEvent) error {
+			re.TraceMiddleware("ingressMiddlewareId", -2000 + 4)
 			w, r := re.Event.Response, re.Event.Request
 
 			if !s.IsRootExternal(r) {
@@ -216,7 +222,7 @@ func RelayHookFunc(se *core.ServeEvent) error {
 
 			return re.Next()
 		},
-		Priority: 4,
+		Priority: -2000 + 4,
 	}
 
 	se.Router.Bind(proxyMiddleware)

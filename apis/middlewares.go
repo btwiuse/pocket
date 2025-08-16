@@ -31,7 +31,7 @@ const (
 	DefaultWWWRedirectMiddlewarePriority = -99999
 	DefaultWWWRedirectMiddlewareId       = "pbWWWRedirect"
 
-	DefaultActivityLoggerMiddlewarePriority   = DefaultRateLimitMiddlewarePriority - 40
+	DefaultActivityLoggerMiddlewarePriority   = -65536
 	DefaultActivityLoggerMiddlewareId         = "pbActivityLogger"
 	DefaultSkipSuccessActivityLogMiddlewareId = "pbSkipSuccessActivityLog"
 	DefaultEnableAuthIdActivityLog            = "pbEnableAuthIdActivityLog"
@@ -60,6 +60,7 @@ func RequireGuestOnly() *hook.Handler[*core.RequestEvent] {
 	return &hook.Handler[*core.RequestEvent]{
 		Id: DefaultRequireGuestOnlyMiddlewareId,
 		Func: func(e *core.RequestEvent) error {
+			e.TraceMiddleware(DefaultRequireGuestOnlyMiddlewareId, 0)
 			if e.Auth != nil {
 				return router.NewBadRequestError("The request can be accessed only by guests.", nil)
 			}
@@ -183,6 +184,7 @@ func loadAuthToken() *hook.Handler[*core.RequestEvent] {
 		Id:       DefaultLoadAuthTokenMiddlewareId,
 		Priority: DefaultLoadAuthTokenMiddlewarePriority,
 		Func: func(e *core.RequestEvent) error {
+			e.TraceMiddleware(DefaultLoadAuthTokenMiddlewareId, DefaultLoadAuthTokenMiddlewarePriority)
 			// already loaded by another middleware
 			if e.Auth != nil {
 				return e.Next()
@@ -224,6 +226,7 @@ func wwwRedirect(redirectHosts []string) *hook.Handler[*core.RequestEvent] {
 		Id:       DefaultWWWRedirectMiddlewareId,
 		Priority: DefaultWWWRedirectMiddlewarePriority,
 		Func: func(e *core.RequestEvent) error {
+			e.TraceMiddleware(DefaultWWWRedirectMiddlewareId, DefaultWWWRedirectMiddlewarePriority)
 			host := e.Request.Host
 
 			if strings.HasPrefix(host, "www.") && list.ExistInSlice(host, redirectHosts) {
@@ -250,6 +253,7 @@ func panicRecover() *hook.Handler[*core.RequestEvent] {
 		Id:       DefaultPanicRecoverMiddlewareId,
 		Priority: DefaultPanicRecoverMiddlewarePriority,
 		Func: func(e *core.RequestEvent) (err error) {
+			e.TraceMiddleware(DefaultPanicRecoverMiddlewareId, DefaultPanicRecoverMiddlewarePriority)
 			// panic-recover
 			defer func() {
 				recoverResult := recover()
@@ -285,6 +289,7 @@ func securityHeaders() *hook.Handler[*core.RequestEvent] {
 		Id:       DefaultSecurityHeadersMiddlewareId,
 		Priority: DefaultSecurityHeadersMiddlewarePriority,
 		Func: func(e *core.RequestEvent) error {
+			e.TraceMiddleware(DefaultSecurityHeadersMiddlewareId, DefaultSecurityHeadersMiddlewarePriority)
 			e.Response.Header().Set("X-XSS-Protection", "1; mode=block")
 			e.Response.Header().Set("X-Content-Type-Options", "nosniff")
 			e.Response.Header().Set("X-Frame-Options", "SAMEORIGIN")
@@ -324,6 +329,7 @@ func activityLogger() *hook.Handler[*core.RequestEvent] {
 		Id:       DefaultActivityLoggerMiddlewareId,
 		Priority: DefaultActivityLoggerMiddlewarePriority,
 		Func: func(e *core.RequestEvent) error {
+			e.TraceMiddleware(DefaultActivityLoggerMiddlewareId, DefaultActivityLoggerMiddlewarePriority)
 			e.Set(requestEventKeyExecStart, time.Now())
 
 			err := e.Next()
@@ -394,6 +400,7 @@ func logRequest(event *core.RequestEvent, err error) {
 
 	attrs = append(
 		attrs,
+		slog.String("mw_trace", event.GetTrace()),
 		slog.String("url", requestUri),
 		slog.String("host", host),
 		slog.String("method", method),
