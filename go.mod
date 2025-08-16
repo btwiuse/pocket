@@ -23,9 +23,9 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/webteleport/relay v0.4.52-alpha.9
 	github.com/webteleport/utils v0.2.19-alpha.6
-	golang.org/x/crypto v0.40.0
+	golang.org/x/crypto v0.41.0
 	golang.org/x/image v0.29.0
-	golang.org/x/net v0.42.0
+	golang.org/x/net v0.43.0
 	golang.org/x/oauth2 v0.30.0
 	golang.org/x/sync v0.16.0
 	modernc.org/sqlite v1.38.2

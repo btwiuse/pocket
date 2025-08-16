@@ -70,6 +70,8 @@ func RelayHookFunc(se *core.ServeEvent) error {
 
 	log.Println("starting the relay server", "HOST", HOST)
 
+	relay.DefaultStorage.Logger = se.App.Logger().With("app", "relay")
+
 	relay.DefaultStorage.OnUpdateFunc = func(t *relay.Store) {
 		store := se.App.Store()
 		store.Set("relayRecordMap", t.RecordMap)
