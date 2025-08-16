@@ -81,7 +81,8 @@ archives:
   - id: archive_noncgo_pocket
     builds:
       - build_noncgo_pocket
-    format: zip
+    formats:
+      - zip
     files:
       - LICENSE.md
       - CHANGELOG.md
