@@ -368,6 +368,8 @@ func logRequest(event *core.RequestEvent, err error) {
 	status := event.Status()
 	method := cutStr(strings.ToUpper(event.Request.Method), 50)
 	host := event.Request.Host
+	proto := event.Request.Proto
+	header := event.Request.Header
 	requestUri := cutStr(event.Request.URL.RequestURI(), 3000)
 
 	// parse the request error
@@ -403,7 +405,9 @@ func logRequest(event *core.RequestEvent, err error) {
 		slog.String("mw_trace", event.GetTrace()),
 		slog.String("url", requestUri),
 		slog.String("host", host),
+		slog.String("proto", proto),
 		slog.String("method", method),
+		slog.Any("header", header),
 		slog.Int("status", status),
 		slog.String("referer", cutStr(event.Request.Referer(), 2000)),
 		slog.String("userAgent", cutStr(event.Request.UserAgent(), 2000)),
