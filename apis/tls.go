@@ -2,15 +2,17 @@ package apis
 
 import (
 	"crypto/tls"
+	"net/http"
 	"os"
 
 	"github.com/webteleport/utils"
 )
 
 var (
-	HOST = utils.EnvHost("localhost")
-	CERT = utils.EnvCert("localhost.pem")
-	KEY  = utils.EnvKey("localhost-key.pem")
+	HOST    = utils.EnvHost("localhost")
+	CERT    = utils.EnvCert("localhost.pem")
+	KEY     = utils.EnvKey("localhost-key.pem")
+	ALT_SVC = utils.EnvAltSvc("")
 )
 
 // disable HTTP/2, because http.Hijacker is not supported,
@@ -33,4 +35,11 @@ func LocalTLSConfig(certFile, keyFile string) *tls.Config {
 		GetCertificate: GetCertificate,
 		NextProtos:     NextProtos,
 	}
+}
+
+func AltSvcMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Alt-Svc", ALT_SVC)
+		next.ServeHTTP(w, r)
+	})
 }

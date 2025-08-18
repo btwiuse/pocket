@@ -15,6 +15,7 @@ func NewServeCommand(app core.App, showStartBanner bool) *cobra.Command {
 	var allowedOrigins []string
 	var httpAddr string
 	var httpsAddr string
+	var quicAddr string
 
 	command := &cobra.Command{
 		Use:          "serve [domain(s)]",
@@ -39,6 +40,7 @@ func NewServeCommand(app core.App, showStartBanner bool) *cobra.Command {
 			err := apis.Serve(app, apis.ServeConfig{
 				HttpAddr:           httpAddr,
 				HttpsAddr:          httpsAddr,
+				QuicAddr:           quicAddr,
 				ShowStartBanner:    showStartBanner,
 				AllowedOrigins:     allowedOrigins,
 				CertificateDomains: args,
@@ -71,6 +73,13 @@ func NewServeCommand(app core.App, showStartBanner bool) *cobra.Command {
 		"https",
 		"",
 		"TCP address to listen for the HTTPS server\n(if domain args are specified - default to 0.0.0.0:443, otherwise - default to empty string, aka. no TLS)\nThe incoming HTTP traffic also will be auto redirected to the HTTPS version",
+	)
+
+	command.PersistentFlags().StringVar(
+		&quicAddr,
+		"quic",
+		"",
+		"UDP address to listen for the HTTP3 server\n(if domain args are specified - default to 0.0.0.0:8964, otherwise - default to 127.0.0.1:8964)",
 	)
 
 	return command

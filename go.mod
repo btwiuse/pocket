@@ -19,6 +19,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.2.3
 	github.com/pocketbase/dbx v1.11.0
 	github.com/pocketbase/tygoja v0.0.0-20250103200817-ca580d8c5119
+	github.com/quic-go/quic-go v0.54.0
 	github.com/spf13/cast v1.9.2
 	github.com/spf13/cobra v1.9.1
 	github.com/webteleport/relay v0.4.52-alpha.9

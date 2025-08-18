@@ -18,6 +18,7 @@ import (
 	"github.com/pocketbase/pocketbase/tools/list"
 	"github.com/pocketbase/pocketbase/tools/routine"
 	"github.com/pocketbase/pocketbase/ui"
+	"github.com/quic-go/quic-go/http3"
 	"golang.org/x/crypto/acme/autocert"
 )
 
@@ -31,6 +32,9 @@ type ServeConfig struct {
 
 	// HttpsAddr is the TCP address to listen for the HTTPS server (eg. "127.0.0.1:443").
 	HttpsAddr string
+
+	// QuicAddr is the UDP address to listen for the HTTP3 server (eg. "127.0.0.1:8964").
+	QuicAddr string
 
 	// Optional domains list to use when issuing the TLS certificate.
 	//
@@ -208,6 +212,10 @@ func Serve(app core.App, config ServeConfig) error {
 			return err
 		}
 
+		if ALT_SVC != "" {
+			handler = AltSvcMiddleware(handler)
+		}
+
 		e.Server.Handler = handler
 
 		if config.HttpsAddr == "" {
@@ -281,6 +289,12 @@ func Serve(app core.App, config ServeConfig) error {
 	}
 
 	var serveErr error
+	if config.QuicAddr != "" {
+		slog.Info("Starting HTTP3 server", "on", config.QuicAddr, "CERT", CERT, "KEY", KEY)
+		if config.QuicAddr != "" {
+			go http3.ListenAndServeQUIC(config.QuicAddr, CERT, KEY, serveEvent.Server.Handler)
+		}
+	}
 	if config.HttpsAddr != "" {
 		slog.Info("Starting HTTPS server", "on", config.HttpsAddr, "CERT", CERT, "KEY", KEY)
 		if config.HttpAddr != "" {
