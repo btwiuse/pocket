@@ -13,6 +13,7 @@ import (
 	"github.com/pocketbase/pocketbase/plugins/ghupdate"
 	"github.com/pocketbase/pocketbase/plugins/jsvm"
 	"github.com/pocketbase/pocketbase/plugins/migratecmd"
+	"github.com/pocketbase/pocketbase/plugins/version"
 	"github.com/pocketbase/pocketbase/tools/hook"
 )
 
@@ -106,6 +107,9 @@ func main() {
 		Repo:              "pocketbase",
 		ArchiveExecutable: "pocket",
 	})
+
+	// Show version
+	version.MustRegister(app, app.RootCmd, version.Config{})
 
 	// registers the relay middleware
 	app.OnServe().Bind(RelayHook)
