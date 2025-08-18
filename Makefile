@@ -1,3 +1,11 @@
+build:  ## Build ./pocket binary for current platform
+	go mod tidy
+	goreleaser build --id build_noncgo_pocket --single-target --skip=validate --clean -o .
+
+build-linux-amd64:  ## Build ./pocket binary for linux/amd64
+	go mod tidy
+	GOOS=linux GOARCH=amd64 goreleaser build --id build_noncgo_pocket --single-target --skip=validate --clean -o .
+
 all:
 	go mod tidy
 	CGO_ENABLED=0 go build -v ./examples/pocket

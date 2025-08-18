@@ -16,7 +16,7 @@ WORKDIR /pocket
 
 ENV GONOSUMDB="*"
 
-RUN make
+RUN make build
 
 FROM btwiuse/arch
 
