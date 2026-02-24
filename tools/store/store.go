@@ -181,11 +181,16 @@ func (s *Store[K, T]) GetOrSet(key K, setFunc func() T) T {
 
 	if !ok {
 		s.mu.Lock()
-		v = setFunc()
-		if s.data == nil {
-			s.data = make(map[K]T)
+		// double-check after acquiring the write lock in case another
+		// goroutine has already set the value between the read and write lock
+		v, ok = s.data[key]
+		if !ok {
+			v = setFunc()
+			if s.data == nil {
+				s.data = make(map[K]T)
+			}
+			s.data[key] = v
 		}
-		s.data[key] = v
 		s.mu.Unlock()
 	}
 
